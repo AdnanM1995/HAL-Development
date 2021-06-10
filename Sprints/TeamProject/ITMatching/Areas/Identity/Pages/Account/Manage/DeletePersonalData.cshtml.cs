@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
 using ITMatching.Models;
+using ITMatching.Models.Abstract;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -16,18 +17,21 @@ namespace ITMatching.Areas.Identity.Pages.Account.Manage
         private readonly UserManager<IdentityUser> _userManager;
         private readonly SignInManager<IdentityUser> _signInManager;
         private readonly ILogger<DeletePersonalDataModel> _logger;
-        private readonly ITMatchingAppContext _context;
+        private readonly IItmuserRepository _itmuserRepo;
+        private readonly IExpertRepository _expertRepo;
 
         public DeletePersonalDataModel(
             UserManager<IdentityUser> userManager,
             SignInManager<IdentityUser> signInManager,
             ILogger<DeletePersonalDataModel> logger,
-            ITMatchingAppContext context)
+            IItmuserRepository itmuserRepo,
+            IExpertRepository expertRepo)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _logger = logger;
-            _context = context;
+            _itmuserRepo = itmuserRepo;
+            _expertRepo = expertRepo;
         }
 
         [BindProperty]
@@ -90,22 +94,20 @@ namespace ITMatching.Areas.Identity.Pages.Account.Manage
                 throw new InvalidOperationException($"Unexpected error occurred deleting user with ID '{user.Id}'.");
             }
 
-            Itmuser itmUser =  await _context.Itmusers.FirstOrDefaultAsync(item => item.AspNetUserId == user.Id);
-            itmUser.UserName = user.UserName;
-            itmUser.Email = user.Email;
-            itmUser.PhoneNumber = user.PhoneNumber;
-            itmUser.FirstName = "Deleted";
-            itmUser.LastName = "User";
-            _context.Update(itmUser);
-
-            Expert expert = await _context.Experts.FirstOrDefaultAsync(e => e.ItmuserId == itmUser.Id);
-            if (expert != null)
+            Itmuser itmUser = await _itmuserRepo.GetByAspNetUserIdAsync(user.Id);
+            if (itmUser != null)
             {
-                var services = await _context.ExpertServices.Where(s => s.ExpertId == expert.Id).ToListAsync();
-                _context.RemoveRange(services);
-            }
+                itmUser.UserName = user.UserName;
+                itmUser.Email = user.Email;
+                itmUser.PhoneNumber = user.PhoneNumber;
+                itmUser.FirstName = "Deleted";
+                itmUser.LastName = "User";
+                await _itmuserRepo.AddOrUpdateAsync(itmUser);
 
-            await _context.SaveChangesAsync();
+                Expert expert = await _expertRepo.GetByItmUserIdAsync(itmUser.Id);
+                if (expert != null)
+                { await _expertRepo.DeleteServicesAsync(expert.Id); }
+            }
 
             await _signInManager.SignOutAsync();
 

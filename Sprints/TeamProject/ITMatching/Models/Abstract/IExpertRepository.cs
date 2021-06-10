@@ -10,5 +10,6 @@ namespace ITMatching.Models.Abstract
         Task<Expert> GetByItmUserIdAsync(int itmUserId);
         Task SetStatusAsync(int expertId, bool isAvailable);
         Task ToggleStatusAsync(int expertId);
+        Task DeleteServicesAsync(int expertId);
     }
 }

@@ -37,5 +37,13 @@ namespace ITMatching.Models.Concrete
             await _context.SaveChangesAsync();
             return;
         }
+
+        public virtual async Task DeleteServicesAsync(int expertId)
+        {
+            var services = await _context.Set<ExpertService>().Where(s => s.ExpertId == expertId).ToListAsync();
+            _context.RemoveRange(services);
+            await _context.SaveChangesAsync();
+            return;
+        }
     }
 }
